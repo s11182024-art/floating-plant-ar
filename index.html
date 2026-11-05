@@ -1,0 +1,276 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <title>漂浮性植物 AR 探索</title>
+
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+
+  <!-- MindAR -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Microsoft JhengHei", sans-serif;
+      background: #10251c;
+      color: white;
+      overflow: hidden;
+    }
+
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      padding: 15px;
+      text-align: center;
+      z-index: 10;
+      background: rgba(0,0,0,0.45);
+    }
+
+    .header h2 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    #status {
+      margin-top: 7px;
+      font-size: 14px;
+      color: #d8f3dc;
+    }
+
+    .controls {
+      position: fixed;
+      bottom: 22px;
+      left: 0;
+      width: 100%;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+    }
+
+    .control-row {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 13px 17px;
+      font-size: 15px;
+      font-weight: bold;
+      color: #173b2a;
+      background: #d8f3dc;
+      min-width: 65px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    button:active {
+      background: #95d5b2;
+      transform: scale(0.96);
+    }
+
+    .reset {
+      background: #f4e7b2;
+    }
+
+    .hint {
+      font-size: 13px;
+      color: white;
+      background: rgba(0,0,0,0.55);
+      border-radius: 20px;
+      padding: 8px 14px;
+      text-align: center;
+    }
+
+    a-scene {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="header">
+    <h2>🌿 漂浮性植物 AR 探索</h2>
+    <div id="status">請允許相機權限，並掃描植物圖片</div>
+  </div>
+
+  <!-- AR 場景 -->
+  <a-scene
+    mindar-image="
+      imageTargetSrc: ./targets.mind;
+      autoStart: true;
+      uiLoading: no;
+      uiScanning: no;
+      uiError: no;
+    "
+    color-space="sRGB"
+    renderer="colorManagement: true, physicallyCorrectLights"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false">
+
+    <a-assets>
+      <a-asset-item
+        id="plantModel"
+        src="./floating-plant.glb">
+      </a-asset-item>
+    </a-assets>
+
+    <a-camera
+      position="0 0 0"
+      look-controls="enabled: false">
+    </a-camera>
+
+    <!-- 圖片辨識成功後顯示模型 -->
+    <a-entity mindar-image-target="targetIndex: 0">
+
+      <a-gltf-model
+        id="plant"
+        src="#plantModel"
+        position="0 0 0.1"
+        rotation="0 0 0"
+        scale="0.3 0.3 0.3">
+      </a-gltf-model>
+
+    </a-entity>
+
+  </a-scene>
+
+  <!-- 模型操作按鈕 -->
+  <div class="controls">
+
+    <div class="hint">
+      將相機對準漂浮性植物圖片，即可觀看 3D 模型
+    </div>
+
+    <div class="control-row">
+      <button onclick="rotateModel('left')">↶ 左轉</button>
+      <button onclick="rotateModel('right')">↷ 右轉</button>
+    </div>
+
+    <div class="control-row">
+      <button onclick="rotateModel('up')">↑ 上翻</button>
+      <button onclick="rotateModel('down')">↓ 下翻</button>
+    </div>
+
+    <div class="control-row">
+      <button onclick="zoomModel('in')">＋ 放大</button>
+      <button onclick="zoomModel('out')">－ 縮小</button>
+      <button class="reset" onclick="resetModel()">重設</button>
+    </div>
+
+  </div>
+
+  <script>
+
+    const model = document.querySelector("#plant");
+    const statusText = document.querySelector("#status");
+    const target = document.querySelector(
+      "[mindar-image-target]"
+    );
+
+    // 初始設定
+    let initialScale = 0.3;
+    let currentScale = initialScale;
+
+    const initialRotation = {
+      x: 0,
+      y: 0,
+      z: 0
+    };
+
+    // 圖片辨識成功
+    target.addEventListener("targetFound", () => {
+      statusText.innerText = "✅ 已辨識圖片！可以操作 3D 模型";
+    });
+
+    // 圖片離開相機
+    target.addEventListener("targetLost", () => {
+      statusText.innerText = "請重新將相機對準植物圖片";
+    });
+
+    // 左右、上下旋轉
+    function rotateModel(direction) {
+
+      const rotation = model.object3D.rotation;
+      const angle = Math.PI / 12;
+
+      if (direction === "left") {
+        rotation.y -= angle;
+      }
+
+      if (direction === "right") {
+        rotation.y += angle;
+      }
+
+      if (direction === "up") {
+        rotation.x -= angle;
+      }
+
+      if (direction === "down") {
+        rotation.x += angle;
+      }
+    }
+
+    // 放大、縮小
+    function zoomModel(direction) {
+
+      if (direction === "in") {
+        currentScale = Math.min(currentScale * 1.2, 1.5);
+      }
+
+      if (direction === "out") {
+        currentScale = Math.max(currentScale / 1.2, 0.05);
+      }
+
+      model.object3D.scale.set(
+        currentScale,
+        currentScale,
+        currentScale
+      );
+    }
+
+    // 重設模型
+    function resetModel() {
+
+      currentScale = initialScale;
+
+      model.object3D.rotation.set(
+        initialRotation.x,
+        initialRotation.y,
+        initialRotation.z
+      );
+
+      model.object3D.scale.set(
+        initialScale,
+        initialScale,
+        initialScale
+      );
+    }
+
+  </script>
+
+</body>
+</html>
