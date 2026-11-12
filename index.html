@@ -15,13 +15,12 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
   "imports": {
     "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
     "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
-    "mindar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
+    "mind-ar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
   }
 }
 </script>
 
 <style>
-
 * {
   box-sizing: border-box;
 }
@@ -170,7 +169,6 @@ button:disabled {
   font-size: 17px;
   padding: 14px 25px;
 }
-
 </style>
 </head>
 
@@ -234,7 +232,7 @@ button:disabled {
 
   </div>
 
-  <!-- 旋轉 -->
+  <!-- 整體模型旋轉 -->
   <div class="control-row">
     <button id="leftBtn" disabled>↶ 左轉</button>
     <button id="rightBtn" disabled>↷ 右轉</button>
@@ -245,12 +243,12 @@ button:disabled {
     <button id="downBtn" disabled>↓ 下翻</button>
   </div>
 
-  <!-- 縮放 -->
+  <!-- 整體模型縮放 -->
   <div class="control-row">
     <button id="zoomIn" disabled>＋ 放大</button>
     <button id="zoomOut" disabled>－ 縮小</button>
     <button id="modelReset" class="reset" disabled>
-      重設浮萍
+      重設模型
     </button>
   </div>
 
@@ -265,7 +263,7 @@ import { GLTFLoader }
 from "three/addons/loaders/GLTFLoader.js";
 
 import { MindARThree }
-from "mindar-image-three";
+from "mind-ar-image-three";
 
 
 // ==================================
@@ -302,6 +300,9 @@ let anchor = null;
 
 let modelRoot = null;
 
+// 整個 GLB 模型的共同控制群組
+let modelControl = null;
+
 let plantNode = null;
 
 let waterNode = null;
@@ -309,7 +310,7 @@ let waterNode = null;
 let veinNode = null;
 
 
-// 原始位置
+// 原始位置（水位調整使用）
 let plantOriginalPosition;
 
 let waterOriginalPosition;
@@ -317,10 +318,8 @@ let waterOriginalPosition;
 let veinOriginalPosition;
 
 
-// 原始旋轉與縮放
-let plantOriginalRotation;
-
-let plantOriginalScale;
+// 整體模型初始旋轉
+let modelOriginalRotation;
 
 
 // 初始參數
@@ -351,11 +350,21 @@ async function loadModel() {
 
     modelRoot = gltf.scene;
 
-    // 整個模型的基礎大小
+    // GLB 原始基礎大小
     modelRoot.scale.setScalar(INITIAL_SCALE);
 
+    // 建立整個模型的共同控制群組
+    // 所有 GLB 物件都放在這個群組裡
+    modelControl = new THREE.Group();
+
+    modelControl.add(modelRoot);
+
     // 放置於圖片辨識錨點
-    anchor.group.add(modelRoot);
+    anchor.group.add(modelControl);
+
+    // 保存整體模型初始旋轉
+    modelOriginalRotation =
+      modelControl.rotation.clone();
 
 
     // 尋找 GLB 內的物件
@@ -394,15 +403,6 @@ async function loadModel() {
     }
 
 
-    // 保存原始旋轉
-    plantOriginalRotation =
-      plantNode.rotation.clone();
-
-    // 保存原始縮放
-    plantOriginalScale =
-      plantNode.scale.clone();
-
-
     modelReady = true;
 
     enableControls();
@@ -411,6 +411,8 @@ async function loadModel() {
       "✅ 3D 模型載入完成，請掃描圖片";
 
     console.log("GLB 載入成功");
+
+    console.log("整體模型控制群組:", modelControl);
 
     console.log("浮萍:", plantNode);
 
@@ -447,6 +449,7 @@ function setupAR() {
     filterBeta: 0.01
 
   });
+
 
   const { renderer, scene, camera } =
     mindarThree;
@@ -499,6 +502,7 @@ startButton.addEventListener("click", async () => {
 
     statusText.innerText =
       "📷 請將相機對準植物圖片";
+
 
     const { renderer, scene, camera } =
       mindarThree;
@@ -556,7 +560,7 @@ function enableControls() {
 
 // ==================================
 // 七、水位調整
-// 只控制水面、浮萍及葉脈
+// 維持原設定：只控制水面、浮萍及葉脈
 // ==================================
 
 function setWaterLevel(value) {
@@ -636,7 +640,7 @@ document.querySelector("#waterReset")
 
 
 // ==================================
-// 八、浮萍旋轉
+// 八、整個模型旋轉與上下翻轉
 // ==================================
 
 const angle = Math.PI / 12;
@@ -645,9 +649,11 @@ function rotatePlant(x, y) {
 
   if (!modelReady) return;
 
-  plantNode.rotation.x += x;
+  // 控制共同父層
+  // 整個 GLB 模型一起旋轉
+  modelControl.rotation.x += x;
 
-  plantNode.rotation.y += y;
+  modelControl.rotation.y += y;
 
 }
 
@@ -685,7 +691,7 @@ document.querySelector("#downBtn")
 
 
 // ==================================
-// 九、浮萍放大縮小
+// 九、整個模型放大縮小
 // ==================================
 
 function zoomPlant(direction) {
@@ -708,13 +714,9 @@ function zoomPlant(direction) {
 
   }
 
-  plantNode.scale.copy(
-    plantOriginalScale
-  );
-
-  plantNode.scale.multiplyScalar(
-    zoomFactor
-  );
+  // 縮放共同父層
+  // 整個 GLB 模型一起放大或縮小
+  modelControl.scale.setScalar(zoomFactor);
 
 }
 
@@ -736,7 +738,7 @@ document.querySelector("#zoomOut")
 
 
 // ==================================
-// 十、重設浮萍
+// 十、重設整個模型
 // ==================================
 
 document.querySelector("#modelReset")
@@ -746,13 +748,13 @@ document.querySelector("#modelReset")
 
   zoomFactor = 1;
 
-  plantNode.rotation.copy(
-    plantOriginalRotation
+  // 恢復整體模型初始旋轉
+  modelControl.rotation.copy(
+    modelOriginalRotation
   );
 
-  plantNode.scale.copy(
-    plantOriginalScale
-  );
+  // 恢復整體模型初始大小
+  modelControl.scale.setScalar(1);
 
 });
 
