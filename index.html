@@ -4,7 +4,6 @@
 
 <head>
   <meta charset="UTF-8">
-
   <meta name="viewport"
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
@@ -17,7 +16,6 @@
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
-
     * {
       box-sizing: border-box;
     }
@@ -30,7 +28,6 @@
       overflow: hidden;
     }
 
-    /* 上方標題 */
     .header {
       position: fixed;
       top: 0;
@@ -39,7 +36,7 @@
       padding: 14px;
       text-align: center;
       z-index: 10;
-      background: rgba(0,0,0,0.5);
+      background: rgba(0,0,0,0.55);
     }
 
     .header h2 {
@@ -53,7 +50,6 @@
       color: #d8f3dc;
     }
 
-    /* AR 場景 */
     a-scene {
       position: fixed;
       inset: 0;
@@ -62,19 +58,18 @@
       z-index: 1;
     }
 
-    /* 下方操作面板 */
     .controls {
       position: fixed;
-      bottom: 12px;
+      bottom: 10px;
       left: 0;
       width: 100%;
       z-index: 20;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 9px;
+      gap: 8px;
       padding: 8px;
-      max-height: 55vh;
+      max-height: 58vh;
       overflow-y: auto;
     }
 
@@ -88,12 +83,12 @@
     button {
       border: none;
       border-radius: 12px;
-      padding: 12px 15px;
+      padding: 11px 15px;
       font-size: 14px;
       font-weight: bold;
       color: #173b2a;
       background: #d8f3dc;
-      min-width: 68px;
+      min-width: 72px;
       cursor: pointer;
       touch-action: manipulation;
     }
@@ -107,7 +102,6 @@
       background: #f4e7b2;
     }
 
-    /* 提示 */
     .hint {
       font-size: 13px;
       color: white;
@@ -117,18 +111,16 @@
       text-align: center;
     }
 
-    /* 水位控制面板 */
     .water-panel {
       width: min(95%, 420px);
-      background: rgba(10,40,65,0.90);
+      background: rgba(10,40,65,0.92);
       border-radius: 16px;
       padding: 12px;
       text-align: center;
-      color: white;
     }
 
     .water-panel h3 {
-      margin: 4px 0 12px;
+      margin: 4px 0 10px;
       font-size: 17px;
     }
 
@@ -159,25 +151,30 @@
       min-width: 85px;
     }
 
-    /* 未辨識前的提示 */
     .small-note {
       font-size: 11px;
       color: #d8e8e8;
+      margin-top: 7px;
+    }
+
+    button:disabled,
+    input:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
   </style>
-
 </head>
 
 <body>
 
-  <!-- 標題 -->
+  <!-- 網頁標題 -->
   <div class="header">
 
     <h2>🌿 漂浮性植物 AR 探索</h2>
 
     <div id="status">
-      請允許相機權限，並掃描植物圖片
+      正在載入 3D 模型...
     </div>
 
   </div>
@@ -196,17 +193,13 @@
 
     color-space="sRGB"
 
-    renderer="
-      colorManagement: true;
-      physicallyCorrectLights: true;
-    "
+    renderer="colorManagement: true"
 
     vr-mode-ui="enabled: false"
 
     device-orientation-permission-ui="enabled: false">
 
 
-    <!-- 載入 GLB 模型 -->
     <a-assets>
 
       <a-asset-item
@@ -224,58 +217,26 @@
     </a-camera>
 
 
-    <!-- 圖片辨識區域 -->
+    <!-- 圖片辨識區 -->
     <a-entity
-      id="imageTarget"
       mindar-image-target="targetIndex: 0">
 
 
-      <!-- 植物與水面共同移動的群組 -->
-      <a-entity id="floatingGroup">
+      <!-- 整個 GLB 場景固定 -->
+      <a-gltf-model
 
+        id="sceneModel"
 
-        <!-- 3D 漂浮性植物 -->
-        <a-gltf-model
+        src="#plantModel"
 
-          id="plant"
+        position="0 0 0.1"
 
-          src="#plantModel"
+        rotation="0 0 0"
 
-          position="0 0 0.1"
+        scale="0.3 0.3 0.3">
 
-          rotation="0 0 0"
+      </a-gltf-model>
 
-          scale="0.3 0.3 0.3">
-
-        </a-gltf-model>
-
-
-        <!-- 虛擬水面 -->
-        <a-plane
-
-          id="water"
-
-          position="0 -0.2 0.1"
-
-          rotation="-90 0 0"
-
-          width="1.5"
-
-          height="1.5"
-
-          material="
-            color: #3299CC;
-            opacity: 0.55;
-            transparent: true;
-            roughness: 0.2;
-            metalness: 0.1;
-            side: double;
-          ">
-
-        </a-plane>
-
-
-      </a-entity>
 
     </a-entity>
 
@@ -297,94 +258,91 @@
 
       <div class="water-label">
 
-        <span>目前水位</span>
+        <span>水位移動量</span>
 
-        <span id="waterValue">-0.20</span>
+        <span id="waterValue">0.00</span>
 
       </div>
 
       <input
-
         type="range"
-
         id="waterSlider"
-
         min="-0.5"
-
         max="0.5"
-
         step="0.01"
-
-        value="-0.2">
+        value="0"
+        disabled>
 
       <div class="water-buttons">
 
-        <button onclick="changeWater(-0.05)">
+        <button id="lowerBtn"
+          onclick="changeWater(-0.05)"
+          disabled>
           ↓ 降低水位
         </button>
 
-        <button onclick="changeWater(0.05)">
+        <button id="raiseBtn"
+          onclick="changeWater(0.05)"
+          disabled>
           ↑ 提高水位
         </button>
 
-        <button
-          class="reset"
-          onclick="resetWater()">
+        <button class="reset"
+          onclick="resetWater()"
+          disabled
+          id="waterReset">
           恢復水位
         </button>
 
       </div>
 
       <div class="small-note">
-        植物會隨著水面同步上下移動
+        只有水面和浮萍會跟著水位移動
       </div>
 
     </div>
 
 
-    <!-- 左右旋轉 -->
+    <!-- 浮萍旋轉 -->
     <div class="control-row">
 
-      <button onclick="rotateModel('left')">
+      <button onclick="rotatePlant('left')">
         ↶ 左轉
       </button>
 
-      <button onclick="rotateModel('right')">
+      <button onclick="rotatePlant('right')">
         ↷ 右轉
       </button>
 
     </div>
 
 
-    <!-- 上下旋轉 -->
     <div class="control-row">
 
-      <button onclick="rotateModel('up')">
+      <button onclick="rotatePlant('up')">
         ↑ 上翻
       </button>
 
-      <button onclick="rotateModel('down')">
+      <button onclick="rotatePlant('down')">
         ↓ 下翻
       </button>
 
     </div>
 
 
-    <!-- 放大縮小 -->
+    <!-- 浮萍縮放 -->
     <div class="control-row">
 
-      <button onclick="zoomModel('in')">
+      <button onclick="zoomPlant('in')">
         ＋ 放大
       </button>
 
-      <button onclick="zoomModel('out')">
+      <button onclick="zoomPlant('out')">
         － 縮小
       </button>
 
-      <button
-        class="reset"
-        onclick="resetModel()">
-        重設模型
+      <button class="reset" onclick="resetPlant()">
+        重設浮萍
       </button>
 
     </div>
@@ -394,48 +352,155 @@
 
   <script>
 
-    // ==================================
-    // 一、取得 AR 物件
-    // ==================================
+    // =====================================
+    // 一、取得 GLB 模型
+    // =====================================
 
-    const model = document.querySelector("#plant");
-
-    const water = document.querySelector("#water");
-
-    const floatingGroup =
-      document.querySelector("#floatingGroup");
-
-    const target =
-      document.querySelector("#imageTarget");
+    const sceneModel =
+      document.querySelector("#sceneModel");
 
     const statusText =
       document.querySelector("#status");
 
 
-    // ==================================
-    // 二、初始設定
-    // ==================================
+    // 需要獨立控制的模型物件
+    let plantNode = null;
+    let waterNode = null;
+    let veinNode = null;
 
-    const initialScale = 0.3;
-
-    let currentScale = initialScale;
-
-    const initialWaterLevel = -0.2;
-
-    let currentWaterLevel = initialWaterLevel;
+    let modelReady = false;
 
 
-    // ==================================
-    // 三、圖片辨識
-    // ==================================
+    // 保存物件原始位置
+    let plantOriginalPosition = null;
+    let waterOriginalPosition = null;
+    let veinOriginalPosition = null;
+
+    // 保存浮萍原始旋轉與大小
+    let plantOriginalRotation = null;
+    let plantOriginalScale = null;
+
+
+    // =====================================
+    // 二、GLB 載入完成
+    // =====================================
+
+    sceneModel.addEventListener("model-loaded", function() {
+
+      const root =
+        sceneModel.getObject3D("mesh");
+
+      if (!root) {
+
+        statusText.innerText =
+          "模型載入失敗，請檢查 GLB 檔案";
+
+        return;
+
+      }
+
+
+      // 依照 GLB 內部名稱尋找物件
+      plantNode =
+        root.getObjectByName("Duckweed_Plant");
+
+      waterNode =
+        root.getObjectByName("Duckweed_WaterSurface");
+
+      veinNode =
+        root.getObjectByName("FrondVein.005");
+
+
+      // 確認必要物件
+      if (!plantNode || !waterNode) {
+
+        statusText.innerText =
+          "找不到浮萍或水面節點，請檢查模型名稱";
+
+        console.error({
+          plantNode,
+          waterNode,
+          veinNode
+        });
+
+        return;
+
+      }
+
+
+      // 保存原始位置
+      plantOriginalPosition =
+        plantNode.position.clone();
+
+      waterOriginalPosition =
+        waterNode.position.clone();
+
+      if (veinNode) {
+
+        veinOriginalPosition =
+          veinNode.position.clone();
+
+      }
+
+
+      // 保存原始旋轉
+      plantOriginalRotation =
+        plantNode.rotation.clone();
+
+      // 保存原始大小
+      plantOriginalScale =
+        plantNode.scale.clone();
+
+
+      // 啟用操作功能
+      modelReady = true;
+
+      enableControls();
+
+      statusText.innerText =
+        "✅ 模型載入完成！請掃描植物圖片";
+
+      console.log("GLB 物件辨識成功");
+
+      console.log("浮萍：", plantNode);
+
+      console.log("水面：", waterNode);
+
+      console.log("葉片脈絡：", veinNode);
+
+    });
+
+
+    // =====================================
+    // 三、啟用控制按鈕
+    // =====================================
+
+    function enableControls() {
+
+      document.querySelector("#waterSlider").disabled = false;
+
+      document.querySelector("#lowerBtn").disabled = false;
+
+      document.querySelector("#raiseBtn").disabled = false;
+
+      document.querySelector("#waterReset").disabled = false;
+
+    }
+
+
+    // =====================================
+    // 四、圖片辨識狀態
+    // =====================================
+
+    const target =
+      document.querySelector("[mindar-image-target]");
 
     target.addEventListener("targetFound", () => {
 
       statusText.innerText =
-        "✅ 已辨識圖片！可以開始探索植物";
+        "✅ 已辨識植物圖片！可以開始探索";
 
     });
-
 
     target.addEventListener("targetLost", () => {
 
@@ -445,102 +510,10 @@
     });
 
 
-    // ==================================
-    // 四、植物左右、上下旋轉
-    // ==================================
-
-    function rotateModel(direction) {
-
-      const rotation = model.object3D.rotation;
-
-      const angle = Math.PI / 12;
-
-      if (direction === "left") {
-
-        rotation.y -= angle;
-
-      }
-
-      if (direction === "right") {
-
-        rotation.y += angle;
-
-      }
-
-      if (direction === "up") {
-
-        rotation.x -= angle;
-
-      }
-
-      if (direction === "down") {
-
-        rotation.x += angle;
-
-      }
-
-    }
-
-
-    // ==================================
-    // 五、植物放大與縮小
-    // ==================================
-
-    function zoomModel(direction) {
-
-      if (direction === "in") {
-
-        currentScale = Math.min(
-          currentScale * 1.2,
-          1.5
-        );
-
-      }
-
-      if (direction === "out") {
-
-        currentScale = Math.max(
-          currentScale / 1.2,
-          0.05
-        );
-
-      }
-
-      model.object3D.scale.set(
-        currentScale,
-        currentScale,
-        currentScale
-      );
-
-    }
-
-
-    // ==================================
-    // 六、重設植物
-    // ==================================
-
-    function resetModel() {
-
-      currentScale = initialScale;
-
-      model.object3D.rotation.set(
-        0,
-        0,
-        0
-      );
-
-      model.object3D.scale.set(
-        initialScale,
-        initialScale,
-        initialScale
-      );
-
-    }
-
-
-    // ==================================
-    // 七、水位調整
-    // ==================================
+    // =====================================
+    // 五、水位調整
+    // 只移動水面、浮萍與葉片脈絡
+    // =====================================
 
     const waterSlider =
       document.querySelector("#waterSlider");
@@ -549,10 +522,16 @@
       document.querySelector("#waterValue");
 
 
-    // 設定水位
+    const initialWaterLevel = 0;
+
+    let currentWaterLevel = initialWaterLevel;
+
+
     function setWaterLevel(value) {
 
-      // 限制水位範圍
+      if (!modelReady) return;
+
+
       const level = Math.max(
         -0.5,
         Math.min(0.5, Number(value))
@@ -560,36 +539,44 @@
 
       currentWaterLevel = level;
 
-      // 水位變動量
-      const movement =
-        level - initialWaterLevel;
 
-      // 讓植物與水面一起移動
-      floatingGroup.object3D.position.y =
-        movement;
+      // 水面移動
+      waterNode.position.y =
+        waterOriginalPosition.y + level;
 
-      // 更新滑桿
+
+      // 浮萍移動
+      plantNode.position.y =
+        plantOriginalPosition.y + level;
+
+
+      // 葉片脈絡一起移動
+      if (veinNode) {
+
+        veinNode.position.y =
+          veinOriginalPosition.y + level;
+
+      }
+
+
+      // 更新介面
       waterSlider.value = level;
 
-      // 顯示水位數值
       waterValue.innerText =
         level.toFixed(2);
 
     }
 
 
-    // 滑桿調整水位
-    waterSlider.addEventListener(
-      "input",
-      function() {
+    // 滑桿
+    waterSlider.addEventListener("input", function() {
 
-        setWaterLevel(this.value);
+      setWaterLevel(this.value);
 
-      }
-    );
+    });
 
 
-    // 按鈕調整水位
+    // 按鈕
     function changeWater(amount) {
 
       setWaterLevel(
@@ -599,25 +586,112 @@
     }
 
 
-    // 恢復初始水位
+    // 恢復水位
     function resetWater() {
 
-      setWaterLevel(
-        initialWaterLevel
+      setWaterLevel(initialWaterLevel);
+
+    }
+
+
+    // =====================================
+    // 六、浮萍旋轉
+    // 只旋轉 Duckweed_Plant
+    // =====================================
+
+    function rotatePlant(direction) {
+
+      if (!modelReady) return;
+
+      const angle = Math.PI / 12;
+
+      if (direction === "left") {
+
+        plantNode.rotation.y -= angle;
+
+      }
+
+      if (direction === "right") {
+
+        plantNode.rotation.y += angle;
+
+      }
+
+      if (direction === "up") {
+
+        plantNode.rotation.x -= angle;
+
+      }
+
+      if (direction === "down") {
+
+        plantNode.rotation.x += angle;
+
+      }
+
+    }
+
+
+    // =====================================
+    // 七、浮萍放大縮小
+    // =====================================
+
+    let zoomFactor = 1;
+
+
+    function zoomPlant(direction) {
+
+      if (!modelReady) return;
+
+      if (direction === "in") {
+
+        zoomFactor = Math.min(
+          zoomFactor * 1.2,
+          3
+        );
+
+      }
+
+      if (direction === "out") {
+
+        zoomFactor = Math.max(
+          zoomFactor / 1.2,
+          0.3
+        );
+
+      }
+
+      plantNode.scale
+        .copy(plantOriginalScale)
+        .multiplyScalar(zoomFactor);
+
+    }
+
+
+    // =====================================
+    // 八、重設浮萍
+    // =====================================
+
+    function resetPlant() {
+
+      if (!modelReady) return;
+
+      zoomFactor = 1;
+
+      plantNode.rotation.copy(
+        plantOriginalRotation
+      );
+
+      plantNode.scale.copy(
+        plantOriginalScale
       );
 
     }
 
 
-    // ==================================
-    // 八、初始化
-    // ==================================
-
-    setWaterLevel(initialWaterLevel);
-
   </script>
 
 </body>
-
 </html>
+
 
