@@ -9,7 +9,6 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
 
 <title>漂浮性植物 AR 探索</title>
 
-<!-- Three.js 與 MindAR 模組 -->
 <script type="importmap">
 {
   "imports": {
@@ -21,9 +20,7 @@ content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable
 </script>
 
 <style>
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
@@ -103,13 +100,9 @@ button:active {
   transform: scale(0.96);
 }
 
-button:disabled {
-  opacity: 0.5;
-}
+button:disabled { opacity: 0.5; }
 
-.reset {
-  background: #f4e7b2;
-}
+.reset { background: #f4e7b2; }
 
 .hint {
   font-size: 13px;
@@ -191,9 +184,7 @@ button:disabled {
     📷 開始 AR 體驗
   </button>
 
-  <!-- 水位控制 -->
   <div class="water-panel">
-
     <h3>💧 水位高度調整</h3>
 
     <div class="water-label">
@@ -211,28 +202,18 @@ button:disabled {
       disabled>
 
     <div class="water-buttons">
-
-      <button id="lowerBtn" disabled>
-        ↓ 降低水位
-      </button>
-
-      <button id="raiseBtn" disabled>
-        ↑ 提高水位
-      </button>
-
+      <button id="lowerBtn" disabled>↓ 降低水位</button>
+      <button id="raiseBtn" disabled>↑ 提高水位</button>
       <button id="waterReset" class="reset" disabled>
         恢復水位
       </button>
-
     </div>
 
     <div class="note">
       水面與浮萍同步升降，其他場景保持固定
     </div>
-
   </div>
 
-  <!-- 整體模型旋轉 -->
   <div class="control-row">
     <button id="leftBtn" disabled>↶ 左轉</button>
     <button id="rightBtn" disabled>↷ 右轉</button>
@@ -243,7 +224,6 @@ button:disabled {
     <button id="downBtn" disabled>↓ 下翻</button>
   </div>
 
-  <!-- 整體模型縮放 -->
   <div class="control-row">
     <button id="zoomIn" disabled>＋ 放大</button>
     <button id="zoomOut" disabled>－ 縮小</button>
@@ -258,37 +238,22 @@ button:disabled {
 <script type="module">
 
 import * as THREE from "three";
-
-import { GLTFLoader }
-from "three/addons/loaders/GLTFLoader.js";
-
-import { MindARThree }
-from "mind-ar-image-three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { MindARThree } from "mind-ar-image-three";
 
 
 // ==================================
 // 一、基本設定
 // ==================================
 
-const container =
-document.querySelector("#container");
-
-const statusText =
-document.querySelector("#status");
-
-const startButton =
-document.querySelector("#startButton");
-
-const slider =
-document.querySelector("#waterSlider");
-
-const waterValue =
-document.querySelector("#waterValue");
+const container = document.querySelector("#container");
+const statusText = document.querySelector("#status");
+const startButton = document.querySelector("#startButton");
+const slider = document.querySelector("#waterSlider");
+const waterValue = document.querySelector("#waterValue");
 
 let mindarThree = null;
-
 let modelReady = false;
-
 let started = false;
 
 
@@ -300,35 +265,25 @@ let anchor = null;
 
 let modelRoot = null;
 
-// 整個 GLB 模型的共同控制群組
+// 所有 GLB 零件共用的控制群組
 let modelControl = null;
 
 let plantNode = null;
-
 let waterNode = null;
-
 let veinNode = null;
 
-
-// 原始位置（水位調整使用）
+// 水位調整的原始位置
 let plantOriginalPosition;
-
 let waterOriginalPosition;
-
 let veinOriginalPosition;
-
 
 // 整體模型初始旋轉
 let modelOriginalRotation;
 
-
-// 初始參數
 const INITIAL_SCALE = 0.3;
-
 const INITIAL_WATER = 0;
 
 let currentWater = INITIAL_WATER;
-
 let zoomFactor = 1;
 
 
@@ -350,45 +305,48 @@ async function loadModel() {
 
     modelRoot = gltf.scene;
 
-    // GLB 原始基礎大小
+    // 保留 GLB 原本基礎大小
     modelRoot.scale.setScalar(INITIAL_SCALE);
+    modelRoot.updateMatrixWorld(true);
 
-    // 建立整個模型的共同控制群組
-    // 所有 GLB 物件都放在這個群組裡
+    // 建立整體控制群組
     modelControl = new THREE.Group();
 
-    modelControl.add(modelRoot);
-
-    // 放置於圖片辨識錨點
     anchor.group.add(modelControl);
+
+    // 逐一取得 GLB 裡的所有零件
+    const modelParts = [...modelRoot.children];
+
+    // 將所有零件直接掛到共同控制群組
+    // attach 會保留原本的世界位置、旋轉及大小
+    modelParts.forEach(part => {
+      modelControl.attach(part);
+    });
 
     // 保存整體模型初始旋轉
     modelOriginalRotation =
       modelControl.rotation.clone();
 
 
-    // 尋找 GLB 內的物件
+    // 尋找水位調整需要的物件
     plantNode =
-      modelRoot.getObjectByName("Duckweed_Plant");
+      modelControl.getObjectByName("Duckweed_Plant");
 
     waterNode =
-      modelRoot.getObjectByName("Duckweed_WaterSurface");
+      modelControl.getObjectByName("Duckweed_WaterSurface");
 
     veinNode =
-      modelRoot.getObjectByName("FrondVein.005");
+      modelControl.getObjectByName("FrondVein.005");
 
 
-    // 確認必要物件
     if (!plantNode || !waterNode) {
-
       throw new Error(
         "找不到 Duckweed_Plant 或 Duckweed_WaterSurface"
       );
-
     }
 
 
-    // 保存原始位置
+    // 保存水位調整的原始位置
     plantOriginalPosition =
       plantNode.position.clone();
 
@@ -396,10 +354,8 @@ async function loadModel() {
       waterNode.position.clone();
 
     if (veinNode) {
-
       veinOriginalPosition =
         veinNode.position.clone();
-
     }
 
 
@@ -408,16 +364,12 @@ async function loadModel() {
     enableControls();
 
     statusText.innerText =
-      "✅ 3D 模型載入完成，請掃描圖片";
+      "✅ 模型載入完成，請掃描圖片";
 
     console.log("GLB 載入成功");
-
-    console.log("整體模型控制群組:", modelControl);
-
+    console.log("整體控制群組:", modelControl);
     console.log("浮萍:", plantNode);
-
     console.log("水面:", waterNode);
-
     console.log("葉脈:", veinNode);
 
   } catch (error) {
@@ -450,17 +402,12 @@ function setupAR() {
 
   });
 
+  const { scene } = mindarThree;
 
-  const { renderer, scene, camera } =
-    mindarThree;
-
-
-  // 光源
   const ambientLight =
     new THREE.AmbientLight(0xffffff, 1.5);
 
   scene.add(ambientLight);
-
 
   const directionalLight =
     new THREE.DirectionalLight(0xffffff, 2);
@@ -469,8 +416,6 @@ function setupAR() {
 
   scene.add(directionalLight);
 
-
-  // 圖片辨識錨點
   anchor = mindarThree.addAnchor(0);
 
 }
@@ -494,6 +439,10 @@ startButton.addEventListener("click", async () => {
 
     await loadModel();
 
+    if (!modelReady) {
+      throw new Error("3D 模型尚未成功載入");
+    }
+
     await mindarThree.start();
 
     started = true;
@@ -503,14 +452,11 @@ startButton.addEventListener("click", async () => {
     statusText.innerText =
       "📷 請將相機對準植物圖片";
 
-
     const { renderer, scene, camera } =
       mindarThree;
 
     renderer.setAnimationLoop(() => {
-
       renderer.render(scene, camera);
-
     });
 
   } catch (error) {
@@ -534,7 +480,6 @@ startButton.addEventListener("click", async () => {
 function enableControls() {
 
   const ids = [
-
     "waterSlider",
     "lowerBtn",
     "raiseBtn",
@@ -546,13 +491,10 @@ function enableControls() {
     "zoomIn",
     "zoomOut",
     "modelReset"
-
   ];
 
   ids.forEach(id => {
-
     document.getElementById(id).disabled = false;
-
   });
 
 }
@@ -560,7 +502,7 @@ function enableControls() {
 
 // ==================================
 // 七、水位調整
-// 維持原設定：只控制水面、浮萍及葉脈
+// 保留原本設定
 // ==================================
 
 function setWaterLevel(value) {
@@ -575,27 +517,20 @@ function setWaterLevel(value) {
 
   currentWater = level;
 
-
   // 水面移動
   waterNode.position.y =
     waterOriginalPosition.y + level;
-
 
   // 浮萍移動
   plantNode.position.y =
     plantOriginalPosition.y + level;
 
-
   // 葉脈移動
   if (veinNode) {
-
     veinNode.position.y =
       veinOriginalPosition.y + level;
-
   }
 
-
-  // 更新數字
   slider.value = level;
 
   waterValue.innerText =
@@ -606,87 +541,74 @@ function setWaterLevel(value) {
 
 // 滑桿
 slider.addEventListener("input", () => {
-
   setWaterLevel(slider.value);
-
 });
 
 
 // 降低水位
 document.querySelector("#lowerBtn")
 .addEventListener("click", () => {
-
   setWaterLevel(currentWater - 0.05);
-
 });
 
 
 // 提高水位
 document.querySelector("#raiseBtn")
 .addEventListener("click", () => {
-
   setWaterLevel(currentWater + 0.05);
-
 });
 
 
 // 恢復水位
 document.querySelector("#waterReset")
 .addEventListener("click", () => {
-
   setWaterLevel(INITIAL_WATER);
-
 });
 
 
 // ==================================
-// 八、整個模型旋轉與上下翻轉
+// 八、整個水缸模型旋轉與翻轉
 // ==================================
 
 const angle = Math.PI / 12;
 
-function rotatePlant(x, y) {
+function rotateModel(x, y) {
 
   if (!modelReady) return;
 
-  // 控制共同父層
-  // 整個 GLB 模型一起旋轉
+  // 所有零件都在 modelControl 底下
+  // 因此整個水缸、浮萍、根部、水面一起旋轉
   modelControl.rotation.x += x;
-
   modelControl.rotation.y += y;
 
 }
 
 
+// 左轉
 document.querySelector("#leftBtn")
 .addEventListener("click", () => {
-
-  rotatePlant(0, -angle);
-
+  rotateModel(0, -angle);
 });
 
 
+// 右轉
 document.querySelector("#rightBtn")
 .addEventListener("click", () => {
-
-  rotatePlant(0, angle);
-
+  rotateModel(0, angle);
 });
 
 
+// 上翻
 document.querySelector("#upBtn")
 .addEventListener("click", () => {
-
-  rotatePlant(-angle, 0);
-
+  rotateModel(-angle, 0);
 });
 
 
+// 下翻
 document.querySelector("#downBtn")
 .addEventListener("click", () => {
-
-  rotatePlant(angle, 0);
-
+  rotateModel(angle, 0);
 });
 
 
@@ -694,7 +616,7 @@ document.querySelector("#downBtn")
 // 九、整個模型放大縮小
 // ==================================
 
-function zoomPlant(direction) {
+function zoomModel(direction) {
 
   if (!modelReady) return;
 
@@ -714,8 +636,7 @@ function zoomPlant(direction) {
 
   }
 
-  // 縮放共同父層
-  // 整個 GLB 模型一起放大或縮小
+  // 整個控制群組一起縮放
   modelControl.scale.setScalar(zoomFactor);
 
 }
@@ -723,17 +644,13 @@ function zoomPlant(direction) {
 
 document.querySelector("#zoomIn")
 .addEventListener("click", () => {
-
-  zoomPlant("in");
-
+  zoomModel("in");
 });
 
 
 document.querySelector("#zoomOut")
 .addEventListener("click", () => {
-
-  zoomPlant("out");
-
+  zoomModel("out");
 });
 
 
@@ -748,12 +665,12 @@ document.querySelector("#modelReset")
 
   zoomFactor = 1;
 
-  // 恢復整體模型初始旋轉
+  // 恢復整體模型旋轉
   modelControl.rotation.copy(
     modelOriginalRotation
   );
 
-  // 恢復整體模型初始大小
+  // 恢復整體模型大小
   modelControl.scale.setScalar(1);
 
 });
@@ -762,6 +679,3 @@ document.querySelector("#modelReset")
 
 </body>
 </html>
-
-
-
